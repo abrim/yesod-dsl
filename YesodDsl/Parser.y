@@ -11,7 +11,7 @@ import System.IO
 import Data.Maybe
 import Data.Typeable
 import Data.Either
-import Prelude hiding (catch) 
+import Prelude hiding (catch)
 import Control.Exception hiding (Handler)
 import System.Exit
 import Control.Monad.IO.Class
@@ -77,6 +77,7 @@ import Data.List
     timeofday { Tk _ TTimeOfDay }
     day { Tk _ TDay }
     utctime { Tk _ TUTCTime }
+    bytestring { Tk _ TByteString }
     maybe { Tk _ TMaybe }
     get { Tk _ TGet }
     param { Tk _ TParam }
@@ -94,7 +95,7 @@ import Data.List
     of { Tk _ TOf }
     in { Tk _ TIn }
     limit { Tk _ TLimit }
-    offset { Tk _ TOffset } 
+    offset { Tk _ TOffset }
     select { Tk _ TSelect }
     from { Tk _ TFrom }
     join { Tk _ TJoin }
@@ -145,18 +146,18 @@ import Data.List
     checkmarkActive { Tk _ TCheckmarkActive }
     checkmarkInactive { Tk _ TCheckmarkInactive }
 
-%left in 
+%left in
 %left plus minus
 %left asterisk slash
 %%
 
 
 
-dbModule : maybeModuleName 
+dbModule : maybeModuleName
            pushScope imports defs popScope {%
            do
                path <- getPath
-               let m =  Module $1  ((reverse . getEntities) $4) 
+               let m =  Module $1  ((reverse . getEntities) $4)
                                     ((reverse . getClasses) $4)
                                     ((reverse . getEnums) $4)
                                     ((reverse . getRoutes) $4)
@@ -172,12 +173,12 @@ maybeModuleName : { Nothing }
             let s2 = tkString $2
             l2 <- mkLoc $2
             declare l2 "module name" $ SReserved
-            return $ Just s2 
+            return $ Just s2
     }
 imports : { [] }
         | import importContent semicolon imports { $2++ $4 }
 
-importContent : stringval {%  
+importContent : stringval {%
     do
         parsed <- getParsed
         if not ($1 `elem` parsed)
@@ -188,12 +189,12 @@ importContent : stringval {%
                 return [Left ($1,m)]
             else return []
    } | moduleName lparen lowerIdList rparen {%
-   do   
+   do
        let (ns,l) = $1
            n = intercalate "." ns
        forM_ $3 $ \f -> do
            declareGlobal l f SFunction
-       return [Right $ Import n $3] 
+       return [Right $ Import n $3]
    }
 
 moduleName: upperIdTk moduleNames {%
@@ -203,20 +204,20 @@ moduleName: upperIdTk moduleNames {%
     }
 moduleNames: { [] }
     | moduleNames dot upperId moduleNames { $1 ++ [$3] }
-                
+
 defs : { [] }
        | defs def  { $2 : $1 }
 def : routeDef     { RouteDef $1 }
-      | entityDef      { EntityDef $1 } 
+      | entityDef      { EntityDef $1 }
       | classDef      { ClassDef $1 }
       | enumDef       { EnumDef $1 }
 
 lowerIdList : lowerIdTk { [tkString $1] }
             | lowerIdList comma lowerIdTk { (tkString $3) : $1 }
 
-     
-enumDef : enum upperIdTk equals pushScope enumValues popScope semicolon 
-         {% 
+
+enumDef : enum upperIdTk equals pushScope enumValues popScope semicolon
+         {%
     do
         l <- mkLoc $2
         let n = tkString $2
@@ -230,15 +231,15 @@ uniqueUpperIdTk: upperIdTk {%
     do
         l <- mkLoc $1
         declare l (tkString $1) SReserved
-        return $1 
+        return $1
     }
 
 uniqueUpperId: uniqueUpperIdTk { tkString $1 }
-          
+
 enumValues : uniqueUpperId { [$1] }
           | enumValues pipe uniqueUpperId { $3 : $1 }
-    
-entityDef : entity upperIdTk maybeTableName lbrace 
+
+entityDef : entity upperIdTk maybeTableName lbrace
             pushScope
             maybeInstances
             fields
@@ -246,11 +247,11 @@ entityDef : entity upperIdTk maybeTableName lbrace
             maybeDeriving
             checks
             popScope
-            rbrace {% 
+            rbrace {%
     do
         l <- mkLoc $2
         let n = tkString $2
-        let e = Entity l n $3 $6 (reverse $7) [] (reverse $8) $9 (reverse $10) 
+        let e = Entity l n $3 $6 (reverse $7) [] (reverse $8) $9 (reverse $10)
         declareGlobal l n (SEntity n)
         return e
     }
@@ -258,28 +259,28 @@ entityDef : entity upperIdTk maybeTableName lbrace
 maybeTableName: sql stringval { Just $2 }
               | { Nothing }
 
-routeDef : 
-    route 
+routeDef :
+    route
     pushScope
     pathPiecesDef
-    lbrace 
-    handlers 
+    lbrace
+    handlers
     popScope
-    rbrace {% 
-        mkLoc $1 >>= \l -> return $ Route l $3 (reverse $5) 
+    rbrace {%
+        mkLoc $1 >>= \l -> return $ Route l $3 (reverse $5)
     }
 
-pathPiecesDef: pathPieces {% 
+pathPiecesDef: pathPieces {%
     do
         forM_ (zip [1..] (filter isPathParam $1)) $ \(idx,pp) -> case pp of
-            PathId l en -> declare l ("$" ++ show idx) (SEntityId en) 
+            PathId l en -> declare l ("$" ++ show idx) (SEntityId en)
             _           -> return ()
         return $1
     }
 pathPieces : slash pathPiece { [$2] }
            | pathPieces slash pathPiece { $1 ++ [$3]}
 
-pathPiece : lowerIdTk { PathText $ tkString $1 } 
+pathPiece : lowerIdTk { PathText $ tkString $1 }
           | hash entityId {%
               do
                   l2 <- mkLoc $2
@@ -288,47 +289,47 @@ pathPiece : lowerIdTk { PathText $ tkString $1 }
 handlers : handlerdef  { [$1] }
          | handlers handlerdef { $2 : $1 }
 
-handlerType: 
-    get {% 
+handlerType:
+    get {%
         do
-             l <- mkLoc $1 
+             l <- mkLoc $1
              declare l "get handler" SReserved
              setCurrentHandlerType GetHandler
-             return $ Handler l GetHandler 
-    } 
+             return $ Handler l GetHandler
+    }
     | put {%
-        do 
+        do
              l <- mkLoc $1
              declare l "put handler" SReserved
              setCurrentHandlerType PutHandler
              return $ Handler l PutHandler
-    } 
+    }
     | post {%
         do
             l <- mkLoc $1
             declare l "post handler" SReserved
             setCurrentHandlerType PostHandler
             return $ Handler l PostHandler
-    } 
+    }
     | delete {%
-        do 
+        do
             l <- mkLoc $1
             declare l "delete handler" SReserved
             setCurrentHandlerType DeleteHandler
             return $ Handler l DeleteHandler
     }
 
-handlerdef : handlerType pushScope handlerParamsBlock popScope {% 
+handlerdef : handlerType pushScope handlerParamsBlock popScope {%
         do
             return $ $1 $3
     }
 fieldRefList : { [ ] }
              | fieldRefList fieldRef { $1 ++ [$2] }
-fieldRef : 
+fieldRef :
     value { Const $1 }
     | now lparen rparen { Now }
-    | lowerIdTk dot lowerIdTk {% 
-        do 
+    | lowerIdTk dot lowerIdTk {%
+        do
             l1 <- mkLoc $1
             let s1 = tkString $1
             l3 <- mkLoc $3
@@ -374,7 +375,7 @@ fieldRef :
 
             return $ PathParam i1 }
     | auth dot lowerIdTk {%
-        do 
+        do
 
             l1 <- mkLoc $1
             l3 <- mkLoc $3
@@ -383,7 +384,7 @@ fieldRef :
                 then return AuthId
                 else do
                     withSymbol l1 "User" $ requireEntityField l3 n3 $ \_ -> return ()
-                    return $ AuthField n3 
+                    return $ AuthField n3
     }
     | localParam { LocalParam }
     | request dot lowerIdTk { RequestField (tkString $3) }
@@ -406,17 +407,17 @@ declareFromEntity: upperIdTk as lowerIdTk {%
             return (Left s1,s3)
     }
 selectQuery:
-    select 
+    select
     selectQueryContent { $2 }
 
 selectQueryContent:
-    selectFields 
+    selectFields
     from
     declareFromEntity
-    joins 
-    maybeWhere 
-    maybeOrder 
-    maybeLimitOffset 
+    joins
+    maybeWhere
+    maybeOrder
+    maybeLimitOffset
     {%
         do
             let sfs = [ sf | (_,sf) <- $1 ]
@@ -429,7 +430,7 @@ targetEntity: upperIdTk {%
             l1 <- mkLoc $1
             declare l1 "target entity" $ SEntity s1
             return $1
-    } 
+    }
 
 beginHandler: {% beginHandler }
 handlerParamsBlock : lbrace beginHandler handlerParams rbrace {%
@@ -438,9 +439,9 @@ handlerParamsBlock : lbrace beginHandler handlerParams rbrace {%
             when (ht == Just GetHandler) $ do
                 hasSelect <- hasReserved "select"
                 l4 <- mkLoc $4
-                when (hasSelect == False) $ 
+                when (hasSelect == False) $
                     pError l4 "missing select in GET handler"
-            return (reverse $3) 
+            return (reverse $3)
     }
 
 handlerParams : { [] }
@@ -450,14 +451,14 @@ handlerParam : public {%
             l <- mkLoc $1
             declare l "public" SReserved
             statement l "public"
-            return Public 
+            return Public
     }
     | default for request dot lowerIdTk value  {%
         do
             l5 <- mkLoc $5
             let t5 = tkString $5
             declare l5 (concat ["default for param \"", t5, "\""]) SReserved
-            return $ ParamDefault t5 $6 
+            return $ ParamDefault t5 $6
         }
     | select selectQueryContent {%
         do
@@ -476,16 +477,16 @@ handlerParam : public {%
             let s3 = tkString $3
             withSymbol l3 s3 $ requireEntity $ \_ -> return ()
             return $ Update (Left $ s3) $6 $7
-    } 
-    | delete pushScope from declareFromEntity maybeWhere popScope {% 
+    }
+    | delete pushScope from declareFromEntity maybeWhere popScope {%
         do
             l <- mkLoc $1
             statement l "delete"
             requireHandlerType l "delete" (/=GetHandler)
-            let (en,vn) = $4 
-            return $ DeleteFrom en vn $5 
+            let (en,vn) = $4
+            return $ DeleteFrom en vn $5
     }
-    | bindResult get upperId identified by fieldRef {% 
+    | bindResult get upperId identified by fieldRef {%
         do
             l <- mkLoc $2
             statement l "get"
@@ -504,38 +505,38 @@ handlerParam : public {%
                 Just (l1,s1) -> declare l1 s1 $ SEntityResult s4
                 Nothing -> return ()
             l4 <- mkLoc $4
-            let i = Insert (Left s4) $5 s1 
+            let i = Insert (Left s4) $5 s1
             withSymbol l4 s4 $ requireEntity $ \e -> validateInsert l e $5
             requireHandlerType l "insert" (/=GetHandler)
             return i
-    } 
+    }
      | defaultfiltersort {%
         do
             l1 <- mkLoc $1
             statement l1 "default-filter-sort"
             requireHandlerType l1 "default-filter-sort" (==GetHandler)
-            return DefaultFilterSort 
+            return DefaultFilterSort
     }
-    | if param stringval equals localParam then pushScope joins where expr popScope {% 
+    | if param stringval equals localParam then pushScope joins where expr popScope {%
         do
             l1 <- mkLoc $1
             statement l1 "if-then"
             requireHandlerType l1 "if-then" (==GetHandler)
-            return $ IfFilter ($3 ,$8 ,$10, True) 
+            return $ IfFilter ($3 ,$8 ,$10, True)
     }
-    | if param stringval equals underscore then pushScope joins where expr popScope {% 
+    | if param stringval equals underscore then pushScope joins where expr popScope {%
         do
             l1 <- mkLoc $1
             statement l1 "if-then"
             requireHandlerType l1 "if-then" (==GetHandler)
-            return $ IfFilter ($3, $8, $10, False) 
+            return $ IfFilter ($3, $8, $10, False)
     }
-    | return json {% 
+    | return json {%
         do
             l <- mkLoc $1
             lastStatement l "return"
             requireHandlerType l "return" (/=GetHandler)
-            return $ Return $2 
+            return $ Return $2
     }
     | require pushScope declareFromEntity joins where expr popScope {%
         do
@@ -548,14 +549,14 @@ handlerParam : public {%
             l <- mkLoc $1
             statement l "for"
             requireHandlerType l "for" (/=GetHandler)
-            return $ For $3 $5 $7 
+            return $ For $3 $5 $7
     }
-    | lowerIdTk fieldRefList {% 
-        do 
+    | lowerIdTk fieldRefList {%
+        do
             l <- mkLoc $1
             statement l (tkString $1)
             return $ Call (tkString $1) $2
-    } 
+    }
 lowerIdParam: lowerIdTk {%
     do
         l1 <- mkLoc $1
@@ -587,21 +588,21 @@ selectField: lowerIdTk dot asterisk {%
         do
             l1 <- mkLoc $1
             if tkString $3 == "id"
-                then return (l1, SelectIdField (Var (tkString $1) (Left "") False) $4) 
-                else return (l1, SelectField (Var (tkString $1) (Left "") False) (tkString $3) $4) 
+                then return (l1, SelectIdField (Var (tkString $1) (Left "") False) $4)
+                else return (l1, SelectField (Var (tkString $1) (Left "") False) (tkString $3) $4)
     }
-    | valexpr as lowerIdTk {% 
+    | valexpr as lowerIdTk {%
         do
             l3 <- mkLoc $3
             return (l3, SelectValExpr $1 (tkString $3) )
     }
-           
-       
+
+
 maybeSelectAlias: { Nothing }
                 | as lowerIdTk { Just $ tkString $2 }
 joins : { [] }
       | jointype declareFromEntity maybeJoinOn joins
-        {% 
+        {%
             do
                 let (en,vn) = $2
                 return $ (Join $1 en vn $3):$4
@@ -627,7 +628,7 @@ orderByDir : asc { SortAsc }
 
 maybeWithJson: with json { Just $2 }
              | { Nothing }
-         
+
 maybeFromJson: from json { Just (Nothing, $2) }
              | from lowerIdTk json {%
                  do
@@ -638,23 +639,23 @@ maybeFromJson: from json { Just (Nothing, $2) }
                      return $ Just (Just s2, $3)
              }
              | { Nothing }
-              
+
 json:  lbrace jsonFields rbrace { $2 }
 jsonField : lowerIdTk equals fieldRef {%
         do
             l1 <- mkLoc $1
             let s1 = tkString $1
-            te <- symbolMatches "target entity" $ \st -> case st of SEntity _ -> True; _ -> False 
-            when te $ withSymbol l1 "target entity" $ 
+            te <- symbolMatches "target entity" $ \st -> case st of SEntity _ -> True; _ -> False
+            when te $ withSymbol l1 "target entity" $
                 requireEntityField l1 s1 $ \_ -> return ()
-            return (s1, $3, Nothing) 
+            return (s1, $3, Nothing)
      }
     | lowerIdTk equals functionRef lparen fieldRef rparen {%
         do
             l1 <- mkLoc $1
             let s1 = tkString $1
-            te <- symbolMatches "target entity" $ \st -> case st of SEntity _ -> True; _ -> False 
-            when te $ withSymbol l1 "target entity" $ 
+            te <- symbolMatches "target entity" $ \st -> case st of SEntity _ -> True; _ -> False
+            when te $ withSymbol l1 "target entity" $
                 requireEntityField l1 s1 $ \_ -> return ()
             return (s1, $5, Just $3)
     }
@@ -680,7 +681,7 @@ binop : equals { Eq }
 expr : expr and expr { AndExpr $1 $3 }
      | expr or expr { OrExpr $1 $3 }
      | not expr { NotExpr $2 }
-     | lparen expr rparen { $2 } 
+     | lparen expr rparen { $2 }
      | valexpr binop valexpr { BinOpExpr $1 $2 $3 }
      | exists lparen pushScope selectQuery popScope rparen
                    { ExistsExpr $4 }
@@ -690,17 +691,17 @@ expr : expr and expr { AndExpr $1 $3 }
          let s1 = tkString $1
          withSymbol l1 s1 requireFunction
          return $ ExternExpr s1 $2
-     }         
+     }
 
 functionParamList: functionParam { [$1] }
                  | functionParamList functionParam { $1 ++ [$2] }
 functionParam: fieldRef { FieldRefParam $1 }
              | verbatim { VerbatimParam (tkString $1) }
-    
 
-valbinop :      
+
+valbinop :
       slash { Div }
-      | asterisk { Mul } 
+      | asterisk { Mul }
       | plus { Add }
       | minus { Sub }
       | concatop { Concat }
@@ -712,29 +713,29 @@ valexpr : lparen valexpr rparen { $2 }
         | random lparen rparen { RandomExpr }
         | floor lparen valexpr rparen { FloorExpr $3 }
         | ceiling lparen valexpr rparen { CeilingExpr $3 }
-        | extract lparen lowerIdTk from valexpr rparen {% 
+        | extract lparen lowerIdTk from valexpr rparen {%
             do
                 let s3 = tkString $3
-                l3 <- mkLoc $3 
+                l3 <- mkLoc $3
                 validateExtractField l3 s3
-                return $ ExtractExpr (tkString $3) $5  
+                return $ ExtractExpr (tkString $3) $5
         }
         | lparen pushScope selectQuery popScope rparen
                    { SubQueryExpr $3 }
 
-valexprlist: valexpr { [$1] }        
+valexprlist: valexpr { [$1] }
            | valexprlist comma valexpr { $3 : $1 }
 
 maybeJoinOn : { Nothing }
             | on expr { Just $2 }
-            
+
 jointype : inner join { InnerJoin }
-         | cross join { CrossJoin } 
+         | cross join { CrossJoin }
          | left outer join { LeftOuterJoin }
          | right outer join { RightOuterJoin }
          | full outer join { FullOuterJoin }
-         
-             
+
+
 maybeInstances : { [] }
                | instance of instances semicolon { (reverse $3) }
 
@@ -755,11 +756,11 @@ classDef : class upperIdTk lbrace
             fields
             uniques
             popScope
-            rbrace {% 
+            rbrace {%
             do
                 l <- mkLoc $2
                 let n = tkString $2
-                let c = Class l n (reverse $5) (reverse $6)  
+                let c = Class l n (reverse $5) (reverse $6)
                 declareGlobal l n (SClass c)
                 return c
             }
@@ -772,16 +773,16 @@ popScope: {% popScope }
 
 fields : { [] }
               | fields field semicolon { $2 : $1 }
- 
+
 field : lowerIdTk maybeMaybe pushScope fieldType fieldOptions popScope {%
         do
             l <- mkLoc $1
             let n = tkString $1
-            let f = Field l $2 n (NormalField $4) $5 Nothing 
+            let f = Field l $2 n (NormalField $4) $5 Nothing
             declare l n (SField f)
             return f
-        } 
-      | lowerIdTk maybeMaybe entityId pushScope fieldOptions popScope {% 
+        }
+      | lowerIdTk maybeMaybe entityId pushScope fieldOptions popScope {%
         do
             l <- mkLoc $1
             let n = tkString $1
@@ -792,7 +793,7 @@ field : lowerIdTk maybeMaybe pushScope fieldType fieldOptions popScope {%
             declare l n (SField f)
             return f}
       | lowerIdTk maybeMaybe pushScope declareEnumName fieldOptions popScope {%
-        do  
+        do
             l <- mkLoc $1
             let n = tkString $1
 
@@ -808,7 +809,7 @@ declareEnumName: upperIdTk {%
         l <- mkLoc $1
         declare l "enum name" (SEnumName $ tkString $1)
         return $1
-                
+
     }
 
 
@@ -839,25 +840,25 @@ fieldOption : check lowerIdTk {%
         do
             l <- mkLoc $1
             declare l "default value" SReserved
-            return $ FieldDefault $2 
+            return $ FieldDefault $2
     }
     | default upperIdTk {%
-        do 
+        do
             l1 <- mkLoc $1
             declare l1 "default value" SReserved
             l2 <- mkLoc $2
             let s2 = tkString $2
 
             men <- withSymbolNow Nothing l2 ("enum name") $ requireEnumName $ \en -> return $ Just en
-      
+
             case men of
                 Just en -> do
                     withSymbol l2 en $ requireEnumValue l2 s2
                     return $ FieldDefault $ EnumFieldValue en s2
                 Nothing -> return $ FieldDefault (StringValue s2)
-             
+
     }
-    | internal {% 
+    | internal {%
         do
             l <- mkLoc $1
             declare l "internal field" SReserved
@@ -870,7 +871,7 @@ fieldOption : check lowerIdTk {%
             return $ FieldInternal
     }
 
-           
+
 value : stringval { StringValue $1 }
       | intval { IntValue $1 }
       | floatval { FloatValue $1 }
@@ -880,8 +881,8 @@ value : stringval { StringValue $1 }
       | lbracket rbracket { EmptyList }
       | checkmarkActive { CheckmarkValue Active }
       | checkmarkInactive { CheckmarkValue Inactive }
-      
-      
+
+
 uniques : { [] }
         | uniques uniqueDef semicolon { $2 : $1 }
 uniqueDef :  unique uniqueUpperId fieldIdList { Unique $2 (reverse $3) }
@@ -903,7 +904,7 @@ functionRef: lowerIdTk {%
         let n = tkString $1
         withSymbol l n requireFunction
         return n
-    }              
+    }
 
 fieldId: lowerIdTk {%
     do
@@ -917,7 +918,7 @@ fieldIdList : fieldId { [$1] }
             | fieldIdList comma fieldId { $3 : $1 }
 
 
-fieldType: 
+fieldType:
     word32      { FTWord32 }
     | word64    { FTWord64 }
     | int32     { FTInt32 }
@@ -931,6 +932,7 @@ fieldType:
     | day       { FTDay }
     | utctime   { FTUTCTime }
     | checkmark { FTCheckmark }
+    | bytestring { FTByteString }
 
 maybeMaybe : { False }
               | maybe {True }
@@ -963,15 +965,15 @@ parseError (t:ts) = throw (ParseError $ "Parse error : unexpected " ++ show (tok
 parseError _ = throw (ParseError $ "Parse error : unexpected end of file")
 
 parseModule :: ParserState -> FilePath -> IO (Module,ParserState)
-parseModule ps path = catch 
+parseModule ps path = catch
         (do
             s <- readFile path
             (m,ps') <- runParser path ps (parseModuleDefs $! lexer s)
             return $! (m,ps'))
-        (\(ParseError msg) -> do 
+        (\(ParseError msg) -> do
             hPutStrLn stderr $ path ++ ": " ++ msg
             exitWith (ExitFailure 1))
-       
+
 parse path = do
     (m,ps) <- parseModule initParserState path
     let ast = implementClasses m

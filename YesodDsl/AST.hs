@@ -11,11 +11,11 @@ import qualified Data.Map as Map
 
 
 data Module = Module {
-    modName      :: Maybe String,  
-    modEntities  :: [Entity],      
-    modClasses   :: [Class],       
-    modEnums     :: [EnumType],    
-    modRoutes    :: [Route],       
+    modName      :: Maybe String,
+    modEntities  :: [Entity],
+    modClasses   :: [Class],
+    modEnums     :: [EnumType],
+    modRoutes    :: [Route],
     modImports   :: [Import]
 } deriving (Show, Data, Typeable)
 
@@ -44,11 +44,12 @@ type EntityName = String
 type EnumName = String
 type EnumValue = String
 type FunctionName = String
-type FieldName = String 
+type FieldName = String
 
-data FieldType = FTWord32 | FTWord64 | FTInt | FTInt32 | FTInt64 | FTText 
-               | FTBool | FTDouble | FTTimeOfDay | FTDay | FTUTCTime 
-               | FTRational | FTCheckmark deriving (Eq,Show,Data,Typeable)
+data FieldType = FTWord32 | FTWord64 | FTInt | FTInt32 | FTInt64 | FTText
+               | FTBool | FTDouble | FTTimeOfDay | FTDay | FTUTCTime
+               | FTRational | FTCheckmark | FTByteString
+               deriving (Eq,Show,Data,Typeable)
 
 type RowNum = Int
 type ColNum = Int
@@ -63,11 +64,11 @@ data Unique = Unique {
     uniqueFields :: [FieldName]
 } deriving (Show, Eq, Data, Typeable)
 
-data HandlerType = GetHandler 
-                 | PutHandler 
-                 | PostHandler 
-                 | DeleteHandler 
-                 deriving (Eq, Data, Typeable) 
+data HandlerType = GetHandler
+                 | PutHandler
+                 | PostHandler
+                 | DeleteHandler
+                 deriving (Eq, Data, Typeable)
 
 instance Show HandlerType where
     show GetHandler = "GET"
@@ -75,7 +76,7 @@ instance Show HandlerType where
     show PostHandler = "POST"
     show DeleteHandler = "DELETE"
 type VariableName = String
-data JoinType = InnerJoin 
+data JoinType = InnerJoin
               | CrossJoin
               | LeftOuterJoin
               | RightOuterJoin
@@ -87,13 +88,13 @@ isOuterJoin RightOuterJoin = True
 isOuterJoin FullOuterJoin = True
 isOuterJoin _ = False
 
-data BinOp = Eq | Ne | Lt | Gt | Le | Ge | Like | Ilike | Is | In | NotIn  deriving (Show,Eq, Data,Typeable)     
-data ValBinOp = Add | Sub | Div | Mul | Concat deriving (Show,Eq, Data,Typeable)    
+data BinOp = Eq | Ne | Lt | Gt | Le | Ge | Like | Ilike | Is | In | NotIn  deriving (Show,Eq, Data,Typeable)
+data ValBinOp = Add | Sub | Div | Mul | Concat deriving (Show,Eq, Data,Typeable)
 
 data BoolExpr = AndExpr BoolExpr BoolExpr
           | OrExpr BoolExpr BoolExpr
           | NotExpr BoolExpr
-          | BinOpExpr ValExpr BinOp ValExpr 
+          | BinOpExpr ValExpr BinOp ValExpr
           | ExistsExpr SelectQuery
           | ExternExpr FunctionName [FunctionParam]
           deriving (Show, Eq, Data, Typeable)
@@ -103,26 +104,26 @@ data FunctionParam = FieldRefParam FieldRef
     deriving (Show, Eq, Data, Typeable)
 
 type MaybeLevel = Int
-    
+
 data ValExpr = FieldExpr FieldRef
            | ConcatManyExpr [ValExpr]
-           | ValBinOpExpr ValExpr ValBinOp ValExpr 
+           | ValBinOpExpr ValExpr ValBinOp ValExpr
            | RandomExpr
            | FloorExpr ValExpr
            | CeilingExpr ValExpr
            | ExtractExpr FieldName ValExpr
-           | SubQueryExpr SelectQuery 
+           | SubQueryExpr SelectQuery
            deriving (Show, Eq, Data, Typeable)
 
 type EntityRef = Either EntityName Entity
 entityRefName :: EntityRef -> EntityName
 entityRefName (Left en) = en
 entityRefName (Right e) = entityName e
-         
-data Stmt = Public 
+
+data Stmt = Public
                   | ParamDefault ParamName FieldValue
                   | DefaultFilterSort
-                  | Select SelectQuery 
+                  | Select SelectQuery
                   | IfFilter IfFilterParams
                   | DeleteFrom EntityRef VariableName (Maybe BoolExpr)
                   | GetById EntityRef FieldRef VariableName
@@ -132,8 +133,8 @@ data Stmt = Public
                   | Require SelectQuery
                   | For VariableName FieldRef [Stmt]
                   | Call FunctionName [FieldRef]
-                  deriving (Show, Eq, Data, Typeable) 
-type UseParamFlag = Bool    
+                  deriving (Show, Eq, Data, Typeable)
+type UseParamFlag = Bool
 type IfFilterParams = (ParamName,[Join],BoolExpr,UseParamFlag)
 
 data SelectQuery = SelectQuery {
@@ -143,13 +144,13 @@ data SelectQuery = SelectQuery {
     sqWhere        :: Maybe BoolExpr,
     sqOrderBy        :: [(FieldRef, SortDir)],
     sqLimitOffset  :: (Int, Int)
-} deriving (Show, Eq, Data, Typeable)    
+} deriving (Show, Eq, Data, Typeable)
 
 type MaybeFlag = Bool
 sqAliases :: SelectQuery -> Map.Map VariableName (Entity,MaybeFlag)
-sqAliases sq = Map.fromList $ catMaybes $ (either (\_ -> Nothing) (\e -> Just (vn,(e,False))) er) : [ either (\_ -> Nothing) (\e -> Just (joinAlias j, (e, isOuterJoin $ joinType j))) $ joinEntity j 
+sqAliases sq = Map.fromList $ catMaybes $ (either (\_ -> Nothing) (\e -> Just (vn,(e,False))) er) : [ either (\_ -> Nothing) (\e -> Just (joinAlias j, (e, isOuterJoin $ joinType j))) $ joinEntity j
                              | j <- sqJoins sq ]
-    where (er,vn) = sqFrom sq                             
+    where (er,vn) = sqFrom sq
 
 
 data SelectField = SelectAllFields VariableRef
@@ -158,7 +159,7 @@ data SelectField = SelectAllFields VariableRef
                  | SelectValExpr ValExpr VariableName
                  deriving (Show, Eq, Data, Typeable)
 
-    
+
 data Join = Join {
     joinType   :: JoinType,
     joinEntity :: EntityRef,
@@ -170,13 +171,13 @@ type FieldRefMapping = (ParamName, FieldRef, Maybe FunctionName)
 
 data CheckmarkValue = Active | Inactive
                     deriving (Show, Eq, Ord, Data, Typeable)
-   
-data SortDir = SortAsc | SortDesc deriving (Show, Eq, Data, Typeable)                   
+
+data SortDir = SortAsc | SortDesc deriving (Show, Eq, Data, Typeable)
 
 data Handler = Handler {
     handlerLoc  :: Location,
     handlerType   :: HandlerType,
-    handlerStmts :: [Stmt] 
+    handlerStmts :: [Stmt]
 } deriving (Show, Eq, Data, Typeable)
 
 data Entity = Entity {
@@ -205,7 +206,7 @@ isPathParam :: PathPiece -> Bool
 isPathParam (PathId _ _) = True
 isPathParam _ = False
 
-        
+
 
 handlerName :: Route -> Handler -> String
 handlerName r h = routeName (routePath r) ++ " " ++ show (handlerType h)
@@ -219,20 +220,20 @@ data PathPiece = PathText String
 instance Show PathPiece where
     show (PathText s) = s
     show (PathId _ en) = "#" ++ en ++ "Id"
-    
+
 data FieldRef = SqlId VariableRef
-              | SqlField VariableRef FieldName 
+              | SqlField VariableRef FieldName
               | AuthId
               | AuthField FieldName
               | LocalParam
               | LocalParamField VariableRef FieldName
               | EnumValueRef EnumName FieldName
-              | PathParam Int 
+              | PathParam Int
               | RequestField FieldName
               | NamedLocalParam VariableName
-              | Const FieldValue 
+              | Const FieldValue
               | Now -- temporarily here
-              deriving (Show, Eq, Data, Typeable) 
+              deriving (Show, Eq, Data, Typeable)
 
 data VariableRef = Var VariableName EntityRef MaybeFlag
                  deriving (Show, Eq, Data, Typeable)
@@ -256,11 +257,11 @@ data Class = Class {
 
 type DefaultValue = String
 type IsListFlag = Bool
-data FieldContent = NormalField FieldType 
-                    | EntityField EntityName 
-                    | EnumField EnumName 
+data FieldContent = NormalField FieldType
+                    | EntityField EntityName
+                    | EnumField EnumName
                 deriving (Show,Eq, Data, Typeable)
-   
+
 
 data Field = Field {
     fieldLoc       :: Location,
@@ -298,7 +299,7 @@ data FieldValue = StringValue String
                 | EnumFieldValue EnumName EnumValue
                 | EmptyList
                 deriving (Show, Eq, Ord, Data, Typeable)
-fieldValueToSql :: FieldValue -> String    
+fieldValueToSql :: FieldValue -> String
 fieldValueToSql fv = case fv of
     (StringValue s) -> "'" ++ s ++ "'"
     (IntValue i) -> show i
@@ -309,8 +310,8 @@ fieldValueToSql fv = case fv of
     CheckmarkValue Inactive -> "NULL"
     EnumFieldValue _ ev ->  "'" ++ ev ++ "'"
     EmptyList -> "'[]'"
-   
-fieldValueToEsqueleto :: FieldValue -> String    
+
+fieldValueToEsqueleto :: FieldValue -> String
 fieldValueToEsqueleto fv = case fv of
     (StringValue s) -> "\"" ++ s ++ "\""
     (IntValue i) -> show i
@@ -335,8 +336,8 @@ fieldValueToHs fv = case fv of
     EmptyList -> "[]"
 
 
-        
-   
+
+
 fieldDefault :: Field -> Maybe FieldValue
 fieldDefault f = listToMaybe [ fv | FieldDefault fv <- universeBi f ]
 
@@ -346,7 +347,7 @@ fieldColumnName f = listToMaybe [ cn | FieldColumnName cn <- universeBi f ]
 fieldChecks :: Field -> [FunctionName]
 fieldChecks f = [ func | FieldCheck func <- universeBi f ]
 
-lookupField :: Entity -> FieldName -> Maybe Field         
+lookupField :: Entity -> FieldName -> Maybe Field
 lookupField e fn = find ((==fn) . fieldName) $ entityFields e
 lowerFirst :: String -> String
 lowerFirst (a:b) = (toLower a):b

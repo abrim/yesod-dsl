@@ -33,6 +33,7 @@ fieldTypeToHsType ft = case ft of
     FTDay -> "Day"
     FTUTCTime -> "UTCTime"
     FTCheckmark -> "Checkmark"
+    FTByteString -> "ByteString"
 
 
 baseFieldType :: Field -> String
@@ -43,13 +44,13 @@ baseFieldType f = case fieldContent f of
 
 
 persistFieldType :: Field -> String
-persistFieldType f = baseFieldType f 
+persistFieldType f = baseFieldType f
                    ++ " " ++ (boolToMaybe . fieldOptional) f
                    ++ (maybeDefault . fieldDefault) f
                    ++ (maybeDefaultNull f)
                    ++ (maybeCheckmarkNullable $ fieldContent f)
-                   ++ (maybeColumnName . fieldColumnName) f 
-    where 
+                   ++ (maybeColumnName . fieldColumnName) f
+    where
           maybeDefault (Just d) = " \"default=" ++ (fieldValueToSql d)  ++ "\""
           maybeDefault _ = " "
           maybeDefaultNull (Field _ True _ (EntityField _) _ _) = " default=NULL"
@@ -66,7 +67,7 @@ entityFieldTypeName :: Entity -> Field -> String
 entityFieldTypeName e f = upperFirst $ entityFieldName e f
 enum :: EnumType -> String
 enum e = T.unpack $(codegenFile "codegen/enum.cg")
-    where fromPathPieces = concatMap fromPathPiece (enumValues e) 
+    where fromPathPieces = concatMap fromPathPiece (enumValues e)
           toPathPieces = concatMap toPathPiece (enumValues e)
           parseJSONs = concatMap parseJSON (enumValues e)
           toJSONs = concatMap toJSON (enumValues e)
@@ -93,7 +94,7 @@ modelDeriving d = T.unpack $(codegenFile "codegen/model-deriving.cg")
 model :: Entity -> String
 model e = T.unpack $(codegenFile "codegen/model-header.cg")
         ++ (concatMap modelField (entityFields e))
-        ++ (concatMap modelUnique (entityUniques e)) 
+        ++ (concatMap modelUnique (entityUniques e))
         ++ (concatMap modelDeriving (entityDeriving e))
     where
         maybeEntityTableName
@@ -103,5 +104,3 @@ models :: Module -> String
 models m = T.unpack $(codegenFile "codegen/models-header.cg")
          ++ (concatMap model (modEntities m))
          ++ (T.unpack $(codegenFile "codegen/models-footer.cg"))
-
-

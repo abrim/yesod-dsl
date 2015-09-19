@@ -20,7 +20,7 @@ tokens :-
     \n ;
     "[|" .* "|]" { mkTvar (TVerbatim . stripBrackets) }
     @string { mkTvar (TString . stripQuotes) }
-    \; { mkT TSemicolon } 
+    \; { mkT TSemicolon }
     \{ { mkT TLBrace }
     \} { mkT TRBrace }
     \( { mkT TLParen }
@@ -82,6 +82,7 @@ tokens :-
     "Bool" { mkT TBool }
     "Double" { mkT TDouble }
     "Rational" { mkT TRational }
+		"ByteString" { mkT TByteString }
     "Maybe" { mkT TMaybe }
     "Day" { mkT TDay }
     "True" { mkT TTrue }
@@ -130,7 +131,7 @@ tokens :-
      "exists" { mkT TExists }
      "Checkmark" { mkT TCheckmark }
      "CheckmarkActive" { mkT TCheckmarkActive }
-     "CheckmarkInactive" { mkT TCheckmarkInactive } 
+     "CheckmarkInactive" { mkT TCheckmarkInactive }
 
     $lower [$alpha $digit \_ ]*  { mkTvar TLowerId  }
     @entityId { mkTvar (TEntityId . (reverse . (drop 2) . reverse)) }
@@ -150,7 +151,7 @@ data TokenType = TSemicolon
            | TLBracket
            | TRBracket
            | TEquals
-           | TNe 
+           | TNe
            | TLt
            | TGt
            | TLe
@@ -169,7 +170,7 @@ data TokenType = TSemicolon
            | TRoute
            | THash
            | TIn
-           | TLimit 
+           | TLimit
            | TOffset
            | TString  String
            | TVerbatim String
@@ -180,10 +181,10 @@ data TokenType = TSemicolon
            | TConcatOp
            | TSlash
            | TOrder
-           | TIdentified 
+           | TIdentified
            | TUpdate
            | TInsert
-           | TWith 
+           | TWith
            | TBy
            | TAsc
            | TDesc
@@ -197,6 +198,7 @@ data TokenType = TSemicolon
            | TBool
            | TDouble
            | TRational
+					 | TByteString
            | TMaybe
            | TTimeOfDay
            | TDay
@@ -296,5 +298,5 @@ getLineNum (AlexPn offset lineNum colNum) = lineNum
 getColNum :: AlexPosn -> Int
 getColNum (AlexPn offset lineNum colNum) = colNum
 
-lexer = alexScanTokens 
+lexer = alexScanTokens
 }
